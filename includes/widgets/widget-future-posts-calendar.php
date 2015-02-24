@@ -43,24 +43,26 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 			extract( $args, EXTR_SKIP );
 			/** This filter is documented in wp-includes/default-widgets.php */
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'], $instance, $this->id_base );
-		
-			echo $args['before_widget'];
-			if ( $title ) {
-				echo $args['before_title'] . $title . $args['after_title'];
-			}
-			echo '<div id="calendar_wrap">';
 			
-			if( isset( $instance['category'] ) ) {
-				$category = true;
-				$cateogry_id = $instance['category'];
-			} else {
-				$category = false;
-				$cateogry_id = null;
-			}
+			if( $page_id = $instance['page'] ) {
+				echo $args['before_widget'];
+				if ( $title ) {
+					echo $args['before_title'] . $title . $args['after_title'];
+				}
+				echo '<div id="calendar_wrap">';
 			
-			get_future_posts_calendar( true, true, true, 701, $category, $cateogry_id );
-			echo '</div>';
-			echo $args['after_widget'];
+				if( isset( $instance['category'] ) ) {
+					$category = true;
+					$cateogry_id = $instance['category'];
+				} else {
+					$category = false;
+					$cateogry_id = null;
+				}
+			
+				get_future_posts_calendar( true, true, true, $page_id, $category, $cateogry_id );
+				echo '</div>';
+				echo $args['after_widget'];
+			}
 		}
 	}
 
@@ -76,6 +78,7 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		$instance = $old_instance;
 		$instance['title'] = strip_tags( $new_instance['title'] );
 		$instance['category'] = intval( $new_instance['category'] );
+		$instance['page'] = intval( $new_instance['page'] );
 
 		return $instance;
 	}
@@ -91,23 +94,37 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		$defaults = array( 
 			'title' => '',
 			'category' => '',
+			'page' => '',
 		);
 		$instance = wp_parse_args( (array) $instance, $defaults ); 
 		$title = strip_tags( $instance['title'] );
 		$category = intval( $instance['category'] );
-		$args = array(
+		$page = intval( $instance['page'] );
+		
+		$cat_args = array(
 			'hide_empty' => true,
 			'id' => $this->get_field_id('category'),
 			'name' => $this->get_field_name('category'),
 			'show_option_none' => 'Select A Category'
 		);
 		if( isset( $category ) )
-			$args['selected'] = $category;
+			$cat_args['selected'] = $category;
+		
+		$page_args = array(
+			'name' => $this->get_field_name('page'),
+			'id' => $this->get_field_id('page'),
+			'show_option_none' => 'Select A Page'
+		);
+		if( isset( $page ) )
+			$page_args['selected'] = $page;
 ?>
 		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label>
 		<input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo esc_attr($title); ?>" /></p>
-		<p><label for="<?php echo $this->get_field_id('category'); ?>"><?php _e('Category (optional):'); ?></label>
-		<?php wp_dropdown_categories( $args )?>
+		<p><label for="<?php echo $this->get_field_id('category'); ?>"><?php _e('Category (optional):'); ?></label><br/>
+		<?php wp_dropdown_categories( $cat_args )?>
+		
+		<p><label for="<?php echo $this->get_field_id('page'); ?>"><?php _e('Archive Page (required):'); ?></label><br/>
+		<?php wp_dropdown_pages( $page_args )?>
 <?php	
 	}
 }
