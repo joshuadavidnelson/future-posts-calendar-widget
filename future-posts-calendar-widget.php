@@ -129,9 +129,9 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 			);
 			if( !empty( $category ) ) {
 				if( is_numeric( $category ) ) {
-					$args['cat'] = $atts['category'];
+					$args['cat'] = intval( $atts['category'] );
 				} elseif( is_string( $category ) ) {
-					$args['category_name'] = $atts['category'];
+					$args['category_name'] = sanitize_text_field( $atts['category'] );
 				}
 			}
 			
