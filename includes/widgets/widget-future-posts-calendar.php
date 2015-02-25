@@ -51,15 +51,19 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 				}
 				echo '<div id="calendar_wrap">';
 			
-				if( isset( $instance['category'] ) ) {
-					$category = true;
-					$cateogry_id = $instance['category'];
+				if( isset( $instance['category'] ) && is_numeric( $instance['category'] ) ) {
+					$cateogry_id = intval( $instance['category'] );
 				} else {
-					$category = false;
 					$cateogry_id = null;
 				}
-			
-				get_future_posts_calendar( true, true, true, $page_id, $category, $cateogry_id );
+				
+				if( isset( $instance['future'] ) && is_numeric( $instance['future'] ) ) {
+					$future = boolval( $instance['future'] );
+				} else {
+					$future = true;
+				}
+				
+				get_future_posts_calendar( true, true, $future, $page_id, $cateogry_id );
 				echo '</div>';
 				echo $args['after_widget'];
 			}
@@ -79,6 +83,7 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		$instance['title'] = strip_tags( $new_instance['title'] );
 		$instance['category'] = intval( $new_instance['category'] );
 		$instance['page'] = intval( $new_instance['page'] );
+		$instance['future'] = intval( $new_instance['future'] );
 
 		return $instance;
 	}
@@ -95,17 +100,20 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 			'title' => '',
 			'category' => '',
 			'page' => '',
+			'future' => 1,
 		);
 		$instance = wp_parse_args( (array) $instance, $defaults ); 
 		$title = strip_tags( $instance['title'] );
 		$category = intval( $instance['category'] );
 		$page = intval( $instance['page'] );
+		$future = intval( $instance['future'] );
 		
 		$cat_args = array(
 			'hide_empty' => true,
 			'id' => $this->get_field_id('category'),
 			'name' => $this->get_field_name('category'),
-			'show_option_none' => 'Select A Category'
+			'show_option_none' => 'Select A Category',
+			'option_none_value' => '',
 		);
 		if( isset( $category ) )
 			$cat_args['selected'] = $category;
@@ -122,6 +130,8 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		<input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo esc_attr($title); ?>" /></p>
 		<p><label for="<?php echo $this->get_field_id('category'); ?>"><?php _e('Category (optional):'); ?></label><br/>
 		<?php wp_dropdown_categories( $cat_args )?>
+		
+		<p><label for="<?php echo $this->get_field_id('future'); ?>">Show Future Posts</label> <input class="checkbox" type="checkbox" value="1" <?php checked($future, 1 ); ?> id="<?php echo $this->get_field_id('future'); ?>" name="<?php echo $this->get_field_name('future'); ?>" /></p>
 		
 		<p><label for="<?php echo $this->get_field_id('page'); ?>"><?php _e('Archive Page (required):'); ?></label><br/>
 		<?php wp_dropdown_pages( $page_args )?>
