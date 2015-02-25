@@ -224,6 +224,7 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 			if ( !$gotsome ) {
 		//		$cache[ $key ] = '';
 		//		wp_cache_set( 'get_future_posts_calendar', $cache, 'calendar' );
+				jdn_log_me( 'no posts' );
 				return;
 			}
 		}
@@ -574,5 +575,17 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 			return apply_filters( 'get_future_posts_calendar', $calendar_output );
 		}
 
+	}
+}
+
+if( !function_exists( 'jdn_log_me' ) ) {
+	function jdn_log_me( $message ) {
+		if ( WP_DEBUG === true ) {
+			if ( is_array( $message ) || is_object( $message ) ) {
+				error_log( 'Custom Plugin Error: ' . print_r( $message, true ) );
+			} else {
+				error_log( 'Custom Plugin Error: ' . $message );
+			}
+		}
 	}
 }
