@@ -38,35 +38,37 @@ class Future_Post_Calendar_Widget extends WP_Widget {
      * @param array  An array of settings for this widget instance 
      * @return void Echoes it's output
      **/
-	function widget( $args, $instance ) {
+	public function widget( $args, $instance ) {
 		if( function_exists( 'get_future_posts_calendar' ) ) {
+			
 			extract( $args, EXTR_SKIP );
 			/** This filter is documented in wp-includes/default-widgets.php */
-			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'], $instance, $this->id_base );
+			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : strip_tags( $instance['title'] ), $instance, $this->id_base );
+			$future = boolval( $instance['future'] );
 			
-			if( $page_id = $instance['page'] ) {
-				echo $args['before_widget'];
-				if ( $title ) {
-					echo $args['before_title'] . $title . $args['after_title'];
-				}
-				echo '<div id="calendar_wrap">';
-			
-				if( isset( $instance['category'] ) && is_numeric( $instance['category'] ) ) {
-					$cateogry_id = intval( $instance['category'] );
-				} else {
-					$cateogry_id = null;
-				}
-				
-				if( isset( $instance['future'] ) && is_numeric( $instance['future'] ) ) {
-					$future = boolval( $instance['future'] );
-				} else {
-					$future = true;
-				}
-				
-				get_future_posts_calendar( true, true, $future, $page_id, $cateogry_id );
-				echo '</div>';
-				echo $args['after_widget'];
+			// Set category
+			if( isset( $instance['category'] ) && is_numeric( $instance['category'] ) ) {
+				$cateogry_id = intval( $instance['category'] );
+			} else {
+				$cateogry_id = null;
 			}
+			
+			// If future posts are included, pass the page id, otherwise set to false 
+			if( $future ) {
+				$page_id = intval( $instance['page'] );
+			} else {
+				$page_id = null;
+			}
+			
+			// Build widget
+			echo $args['before_widget'];
+			if ( $title ) {
+				echo $args['before_title'] . $title . $args['after_title'];
+			}
+			echo '<div id="calendar_wrap">';
+			get_future_posts_calendar( true, true, $page_id, $cateogry_id );
+			echo '</div>';
+			echo $args['after_widget'];
 		}
 	}
 
@@ -84,7 +86,15 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		$instance['category'] = intval( $new_instance['category'] );
 		$instance['page'] = intval( $new_instance['page'] );
 		$instance['future'] = intval( $new_instance['future'] );
-
+		
+		// Clear cache
+		global $m, $monthnum, $year;
+		$key = md5( $m . $monthnum . $year );
+		if ( $cache = wp_cache_get( 'get_future_posts_calendar', 'calendar' ) ) {
+			if( is_array($cache) && isset( $cache[ $key ] ) )
+				wp_cache_delete( $key, 'calendar' );
+		}
+		
 		return $instance;
 	}
 	
@@ -113,7 +123,7 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 			'id' => $this->get_field_id('category'),
 			'name' => $this->get_field_name('category'),
 			'show_option_none' => 'Select A Category',
-			'option_none_value' => '',
+			'option_none_value' => 0,
 		);
 		if( isset( $category ) )
 			$cat_args['selected'] = $category;
@@ -121,7 +131,8 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		$page_args = array(
 			'name' => $this->get_field_name('page'),
 			'id' => $this->get_field_id('page'),
-			'show_option_none' => 'Select A Page'
+			'show_option_none' => 'Select A Page',
+			'option_none_value' => 0,
 		);
 		if( isset( $page ) )
 			$page_args['selected'] = $page;
@@ -133,7 +144,7 @@ class Future_Post_Calendar_Widget extends WP_Widget {
 		
 		<p><label for="<?php echo $this->get_field_id('future'); ?>">Show Future Posts</label> <input class="checkbox" type="checkbox" value="1" <?php checked($future, 1 ); ?> id="<?php echo $this->get_field_id('future'); ?>" name="<?php echo $this->get_field_name('future'); ?>" /></p>
 		
-		<p><label for="<?php echo $this->get_field_id('page'); ?>"><?php _e('Archive Page (required):'); ?></label><br/>
+		<p><label for="<?php echo $this->get_field_id('page'); ?>"><?php _e('Archive Page (required for future posts):'); ?></label><br/>
 		<?php wp_dropdown_pages( $page_args )?>
 <?php	
 	}

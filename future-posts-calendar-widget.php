@@ -90,6 +90,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
  		private function includes() {
 			// run
  			add_action( 'plugins_loaded', array( $this, 'init' ) );
+			
 			// include widget
 			require_once( FPC_DIR . '/includes/widgets/widget-future-posts-calendar.php' );
  		}
@@ -101,6 +102,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
  		 * @return void
  		 */
  		function init() {
+			// Add Shortcode
 			add_shortcode( 'future-posts-archive', array( $this, 'future_post_archive_shortcode' ) );
  		}
 		
@@ -127,14 +129,20 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 				'orderby' => 'date',
 				'order' => 'ASC',
 			);
+			// if the category att is set, update the query
 			if( !empty( $category ) ) {
 				if( is_numeric( $category ) ) {
 					$args['cat'] = intval( $atts['category'] );
 				} elseif( is_string( $category ) ) {
 					$args['category_name'] = sanitize_text_field( $atts['category'] );
 				}
+				
+			// Alternatively, if there is a query variable for the category
+			} elseif( $cat = get_query_var( 'future-category', false ) ) {
+				$args['cat'] = $cat;
 			}
 			
+			// The query
 			$the_query = new WP_Query( $args );
 			$future_posts = '';
 			
@@ -144,15 +152,22 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 				$future_posts = '<div class="future-posts">';
 				while ( $the_query->have_posts() ) : $the_query->the_post();
 					global $post;
-					
 					// Set the day anchors
 					if( $the_query->current_post == 0 || get_the_date( 'mdy', get_the_ID() ) !== $day) {
 						$day = get_the_date( 'mdy', get_the_ID() );
-						$future_posts .= '<a name="' . $day . '"> </a>';
+						$future_posts .= '<a name="' . $day . '" style="display:inline-block;"></a>';
 					}
-				
-					$future_posts .= '<div class="post" id="post-' . get_the_ID() . '"><h3 class="entry-title">' . get_the_title( get_the_ID() ) . '</h3><p class="entry-meta">' . get_the_date( 'F j, Y', $post->ID ) . '</p><div class="entry-content excerpt">' . get_the_excerpt() . '</div></div>';
-					
+					$future_posts .= '<article class="post-' . get_the_ID() . ' post status-future format-standard type-post entry" itemscope="itemscope" itemtype="http://schema.org/BlogPosting" itemprop="blogPost">';
+					$future_posts .= '<header class="entry-header">';
+					$future_posts .= '<h2 class="entry-title">' . get_the_title( get_the_ID() ) . '</h2>';
+					$subtitle = esc_html( get_post_meta( $post->ID, '_ahjira_subtitle', TRUE ) );
+					if( !empty( $subtitle ) ) {
+						$future_posts .= apply_filters( 'genesis_subtitles_output', sprintf( '<h2 class="subtitle">%s</h2>', $subtitle ) );
+					}
+					$future_posts .= '<p class="entry-meta">' . get_the_date( 'F j, Y', $post->ID ) . '</p>';
+					$future_posts .= '</header>';
+					$future_posts .= '<div class="entry-content excerpt" itemprop="text">' . get_the_excerpt() . '</div>';
+					$future_posts .= '</article>';					
 				endwhile;
 				$future_posts .= '</div>';
 			endif;
@@ -175,16 +190,18 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
  *
  * @since 1.0.0
  *
+ * @uses get_calendar()
+ * @see get_calendar() in wp-includes/general-template.php
+ * @link http://codex.wordpress.org/Function_Reference/get_calendar
+ *
  * @param bool $initial Optional, default is true. Use initial calendar names.
  * @param bool $echo Optional, default is true. Set to false for return.
- * @param bool $future Optional, default set to true. Set to false to only return past posts.
- * @param int $future_archive_page_id Required for future posts, links all future posts to this page.
+ * @param int $future_archive_page_id Required for future posts, links all future posts to this page. Default to null for past posts only.
  * @param int $category_id ID of cateogry to be filterd by, optional.
- * @uses get_calendar()
  * @return string|null String when retrieving, null when displaying.
  */
 if( !function_exists( 'get_future_posts_calendar' ) ) {
-	function get_future_posts_calendar( $initial = true, $echo = true, $future = true, $future_archive_page_id = null, $category_id = null ) {
+	function get_future_posts_calendar( $initial = true, $echo = true,  $future_archive_page_id = null, $category_id = null ) {
 		
 		// if category is chosen
 		if( is_numeric( $category_id ) && $category_id >0 ) {
@@ -194,13 +211,15 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 		}
 		
 		// If future archive is chosen
-		if( is_numeric( $future_archive_page_id ) ) {
+		if( is_numeric( $future_archive_page_id ) && $future_archive_page_id > 0 ) {
 			$future_archive_page_id = intval( $future_archive_page_id );
+		} else {
+			$future_archive_page_id = null;
 		}
 		
 		global $wpdb, $m, $monthnum, $year, $wp_locale, $posts;
 
-/*		$key = md5( $m . $monthnum . $year );
+		$key = md5( $m . $monthnum . $year );
 		if ( $cache = wp_cache_get( 'get_future_posts_calendar', 'calendar' ) ) {
 			if ( is_array($cache) && isset( $cache[ $key ] ) ) {
 				if ( $echo ) {
@@ -216,15 +235,15 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 
 		if ( !is_array($cache) )
 			$cache = array();
-		*/
+		
 		// Quick check. If we have no posts at all, abort!
 		if ( !$posts ) {
 			$gotsome = $wpdb->get_var("SELECT 1 as test FROM $wpdb->posts WHERE post_type = 'post' AND post_status = 'publish' OR post_status = 'future' LIMIT 1");
 			
 			if ( !$gotsome ) {
-		//		$cache[ $key ] = '';
-		//		wp_cache_set( 'get_future_posts_calendar', $cache, 'calendar' );
-				jdn_log_me( 'no posts' );
+				$cache[ $key ] = '';
+				wp_cache_set( 'get_future_posts_calendar', $cache, 'calendar' );
+				fpc_log_me( 'no posts' );
 				return;
 			}
 		}
@@ -258,94 +277,52 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 		$unixmonth = mktime(0, 0 , 0, $thismonth, 1, $thisyear);
 		$last_day = date('t', $unixmonth);
 
-		// Get the next and previous month and year with at least one post
-		if( $category_id && $future ) {
-			$previous = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id) 
-	
-				WHERE post_date < '$thisyear-$thismonth-01'
-
-				AND $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-
-				AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )
-				ORDER BY post_date DESC
-				LIMIT 1");
-					
-			$next = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)
-		
-				WHERE post_date > '$thisyear-$thismonth-{$last_day} 23:59:59'
-
-				AND $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-
-				AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )
-				ORDER BY post_date ASC
-				LIMIT 1");
-		
+		// Set the sql query parameters for various conditions
+		// Future posts and cateogry filter
+		if( $category_id && $future_archive_page_id ) {
+			$category_tables = "LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)";
+			$category_terms = "AND $wpdb->term_taxonomy.term_id IN ($category_id) AND $wpdb->term_taxonomy.taxonomy = 'category' ";
+			$post_status = "( post_status = 'publish' OR post_status = 'future' )";
+			
+		// Category filter, past posts only
 		} elseif( $category_id ) {
-			$previous = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id) 
-	
-				WHERE post_date < '$thisyear-$thismonth-01'
-
-				AND $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-
-				AND post_type = 'post' AND post_status = 'publish'
-				ORDER BY post_date DESC
-				LIMIT 1");
-					
-			$next = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)
-		
-				WHERE post_date > '$thisyear-$thismonth-{$last_day} 23:59:59'
-
-				AND $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-
-				AND post_type = 'post' AND post_status = 'publish'
-				ORDER BY post_date ASC
-				LIMIT 1");
+			$category_tables = "LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)";
+			$category_terms = "AND $wpdb->term_taxonomy.term_id IN ($category_id) AND $wpdb->term_taxonomy.taxonomy = 'category' ";
+			$post_status = "post_status = 'publish'";
 			
-		} elseif( $future ) {
+		// No Category filter, but yes future posts
+		} elseif( $future_archive_page_id ) {
+			$category_tables = "";
+			$category_terms = "";
+			$post_status = "( post_status = 'publish' OR post_status = 'future' )";
 			
-			$previous = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				WHERE post_date < '$thisyear-$thismonth-01'
-				AND post_type = 'post' AND post_status = 'publish' OR post_status = 'future'
-				ORDER BY post_date DESC
-				LIMIT 1");
-					
-			$next = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts		
-				WHERE post_date > '$thisyear-$thismonth-{$last_day} 23:59:59'
-				AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )
-				ORDER BY post_date ASC
-				LIMIT 1");
-		
+		// No category filter or future posts
 		} else {
-		
-			$previous = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				WHERE post_date < '$thisyear-$thismonth-01' AND post_type = 'post' AND post_status = 'publish'
-				ORDER BY post_date DESC
-				LIMIT 1");
-			$next = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
-				FROM $wpdb->posts
-				WHERE post_date > '$thisyear-$thismonth-{$last_day} 23:59:59' AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )
-				ORDER BY post_date ASC
-				LIMIT 1");
+			$category_tables = "";
+			$category_terms = "";
+			$post_status = "post_status = 'publish'";
 		}
+		
+		// Get the next and previous month and year with at least one post
+		$previous = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
+			FROM $wpdb->posts
+			$category_tables
+			WHERE post_date < '$thisyear-$thismonth-01'
+			$category_terms
+			AND post_type = 'post'
+			AND $post_status
+			ORDER BY post_date DESC
+			LIMIT 1");
+				
+		$next = $wpdb->get_row("SELECT MONTH(post_date) AS month, YEAR(post_date) AS year
+			FROM $wpdb->posts
+			$category_tables
+			WHERE post_date > '$thisyear-$thismonth-{$last_day} 23:59:59'
+			$category_terms
+			AND post_type = 'post'
+			AND $post_status
+			ORDER BY post_date ASC
+			LIMIT 1");
 		
 		/* translators: Calendar caption: 1: month name, 2: 4-digit year */
 		$calendar_caption = _x('%1$s %2$s', 'calendar caption');
@@ -394,50 +371,15 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 		<tbody>
 		<tr>';
 
-		// Get days with posts in category, including future
-		if( $category_id && $future ) {
-			$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id) 
-
-				WHERE $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-			
-				AND post_type = 'post'
-				AND ( post_status = 'publish' OR post_status = 'future' )
-				AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00'
-				AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59'", ARRAY_N);
-				
-		// Present posts by cateogry only, not future
-		} elseif( $category_id ) {
-			$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
-				FROM $wpdb->posts
-				LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) 
-				LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id)
-
-				WHERE $wpdb->term_taxonomy.term_id IN ($category_id) 
-				AND $wpdb->term_taxonomy.taxonomy = 'category' 
-			
-				AND post_type = 'post'
-				AND post_status = 'publish'
-				AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00'
-				AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59'", ARRAY_N);
-				
-		// Only future posts, not category filter
-		} elseif( $future ) {
-			$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
-				FROM $wpdb->posts WHERE post_date >= '{$thisyear}-{$thismonth}-01 00:00:00'
-				AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )
-				AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59'", ARRAY_N);
-			
-		// Get posts, no category or future posts
-		} else {
-			$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
-				FROM $wpdb->posts WHERE post_date >= '{$thisyear}-{$thismonth}-01 00:00:00'
-				AND post_type = 'post' AND post_status = 'publish'
-				AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59'", ARRAY_N);
-		}
+		// Get days with posts, using category/future options set above
+		$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
+			FROM $wpdb->posts
+			$category_tables
+			WHERE post_type = 'post'
+			$category_terms
+			AND $post_status
+			AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00'
+			AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59'", ARRAY_N);
 		
 		if ( $dayswithposts ) {
 			foreach ( (array) $dayswithposts as $daywith ) {
@@ -454,56 +396,16 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 
 		$ak_titles_for_day = array();
 		
-		// Get post titles filtered by cateogry and include future posts
-		if( $category_id && $future ) {
-			$ak_post_titles = $wpdb->get_results( "SELECT ID, post_title, DAYOFMONTH(post_date) as dom "
-				."FROM $wpdb->posts "
-		
-				."LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) "
-				."LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id) "
-		
-				."WHERE $wpdb->term_taxonomy.term_id IN ($category_id) "
-				."AND $wpdb->term_taxonomy.taxonomy = 'category' "
-
-				."AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00' "
-				."AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59' "
-				."AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' ) "
-			);
-		
-		// Present post titles by cateogry only, not future
-		} elseif( $category_id ) {
-			$ak_post_titles = $wpdb->get_results("SELECT post_title, DAYOFMONTH(post_date) as dom "
-				."FROM $wpdb->posts "
-		
-				."LEFT JOIN $wpdb->term_relationships ON($wpdb->posts.ID = $wpdb->term_relationships.object_id) "
-				."LEFT JOIN $wpdb->term_taxonomy ON($wpdb->term_relationships.term_taxonomy_id = $wpdb->term_taxonomy.term_taxonomy_id) "
-		
-				."WHERE $wpdb->term_taxonomy.term_id IN ($category_id) "
-				."AND $wpdb->term_taxonomy.taxonomy = 'category' "
-
-				."AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00' "
-				."AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59' "
-				."AND post_type = 'post' AND post_status = 'publish'"
-			);
-		
-		// Only future post titles, not category filter
-		} elseif( $future ) {
-			$ak_post_titles = $wpdb->get_results( "SELECT ID, post_title, DAYOFMONTH(post_date) as dom "
-				."FROM $wpdb->posts "
-				."WHERE post_date >= '{$thisyear}-{$thismonth}-01 00:00:00' "
-				."AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59' "
-				."AND post_type = 'post' AND ( post_status = 'publish' OR post_status = 'future' )"
-			);
-			
-		// Get post titles, no category or future posts
-		} else {
-			$ak_post_titles = $wpdb->get_results( "SELECT ID, post_title, DAYOFMONTH(post_date) as dom "
-				."FROM $wpdb->posts "
-				."WHERE post_date >= '{$thisyear}-{$thismonth}-01 00:00:00' "
-				."AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59' "
-				."AND post_type = 'post' AND post_status = 'publish'"
-			);
-		}
+		// Get post titles, using category/future options set above
+		$ak_post_titles = $wpdb->get_results( "SELECT ID, post_title, DAYOFMONTH(post_date) as dom "
+			."FROM $wpdb->posts "
+			.$category_tables
+			."WHERE post_type = 'post'"
+			.$category_terms
+			."AND post_date >= '{$thisyear}-{$thismonth}-01 00:00:00' "
+			."AND post_date <= '{$thisyear}-{$thismonth}-{$last_day} 23:59:59' "
+			."AND $post_status"
+		);
 		
 		// Post titles
 		if ( $ak_post_titles ) {
@@ -538,7 +440,7 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 
 			if ( in_array( $day, $daywithpost ) && isset( $ak_titles_for_day[ $day ] ) ) { // any posts today?
 				if( $day > gmdate('j', current_time('timestamp') ) ) {
-					$calendar_output .= '<a href="' . get_permalink( $future_archive_page_id ) . '#' . date( 'mdy', mktime(0, 0 , 0, $thismonth, $day, $thisyear) ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\" class=\"future\">$day</a>";
+					$calendar_output .= '<a href="' . get_permalink( $future_archive_page_id ) . '#' . date( 'mdy', mktime(0, 0 , 0, $thismonth, $day, $thisyear) ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\" class=\"future\" style=\"color: #0fad70;\">$day</a>";
 				} else {
 					$calendar_output .= '<a href="' . get_day_link( $thisyear, $thismonth, $day ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\">$day</a>";
 				}
@@ -558,8 +460,8 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 
 		$calendar_output .= "\n\t</tr>\n\t</tbody>\n\t</table>";
 
-//		$cache[ $key ] = $calendar_output;
-//		wp_cache_set( 'get_future_posts_calendar', $cache, 'calendar' );
+		$cache[ $key ] = $calendar_output;
+		wp_cache_set( 'get_future_posts_calendar', $cache, 'calendar' );
 
 		if ( $echo ) {
 			/**
@@ -578,13 +480,20 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 	}
 }
 
-if( !function_exists( 'jdn_log_me' ) ) {
-	function jdn_log_me( $message ) {
+/**
+ * Log any errors for debugging.
+ *
+ * @global WP_DEBUG
+ * @uses error_log
+ * @var string|array $message the error message (a string or array)
+ */
+if( !function_exists( 'fpc_log_me' ) ) {
+	function fpc_log_me( $message ) {
 		if ( WP_DEBUG === true ) {
 			if ( is_array( $message ) || is_object( $message ) ) {
-				error_log( 'Custom Plugin Error: ' . print_r( $message, true ) );
+				error_log( 'Future Posts Calendar Error: ' . print_r( $message, true ) );
 			} else {
-				error_log( 'Custom Plugin Error: ' . $message );
+				error_log( 'Future Posts Calendar Error: ' . $message );
 			}
 		}
 	}
