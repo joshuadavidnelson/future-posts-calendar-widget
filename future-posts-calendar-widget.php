@@ -3,7 +3,7 @@
  * Plugin Name: Future Posts Calendar Widget
  * Plugin URI: http://joshuadnelson.com
  * Description: A calendar widget and archive short code for displaying future posts
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Joshua Nelson
  * Author URI: http://joshuadnelson.com
  * GitHub Plugin URI: https://github.com/joshuadavidnelson/future-posts-calendar-widget
@@ -12,7 +12,7 @@
  *
  * @package 	Future_Posts_Calendar
  * @author 		Joshua David Nelson
- * @version 	1.0.0
+ * @version 	1.0.1
  * @license 	http://www.gnu.org/licenses/gpl-2.0.html GPLv2.0+
  */
 
@@ -60,7 +60,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 
  			// Plugin version
  			if ( ! defined( 'FPC_VERSION' ) ) {
- 				define( 'FPC_VERSION', '1.0.0' );
+ 				define( 'FPC_VERSION', '1.0.1' );
  			}
 
  			// Plugin Folder Path
