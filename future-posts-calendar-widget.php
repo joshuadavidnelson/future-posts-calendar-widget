@@ -3,7 +3,7 @@
  * Plugin Name: Future Posts Calendar Widget
  * Plugin URI: http://joshuadnelson.com
  * Description: A calendar widget and archive short code for displaying future posts
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Joshua Nelson
  * Author URI: http://joshuadnelson.com
  * GitHub Plugin URI: https://github.com/joshuadavidnelson/future-posts-calendar-widget
@@ -12,7 +12,7 @@
  *
  * @package 	Future_Posts_Calendar
  * @author 		Joshua David Nelson
- * @version 	1.0.1
+ * @version 	1.0.2
  * @license 	http://www.gnu.org/licenses/gpl-2.0.html GPLv2.0+
  */
 
@@ -60,7 +60,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 
  			// Plugin version
  			if ( ! defined( 'FPC_VERSION' ) ) {
- 				define( 'FPC_VERSION', '1.0.1' );
+ 				define( 'FPC_VERSION', '1.0.2' );
  			}
 
  			// Plugin Folder Path
@@ -202,7 +202,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
  */
 if( !function_exists( 'get_future_posts_calendar' ) ) {
 	function get_future_posts_calendar( $initial = true, $echo = true,  $future_archive_page_id = null, $category_id = null ) {
-		
+		echo '<style>.widget_calendar th, .widget_calendar td { width: 14.2% }</style>';
 		// if category is chosen
 		if( is_numeric( $category_id ) && $category_id >0 ) {
 			$category_id = intval( $category_id );
