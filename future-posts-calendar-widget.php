@@ -3,7 +3,7 @@
  * Plugin Name: Future Posts Calendar Widget
  * Plugin URI: http://joshuadnelson.com
  * Description: A calendar widget and archive short code for displaying future posts
- * Version: 1.0.0
+ * Version: 1.0.3
  * Author: Joshua Nelson
  * Author URI: http://joshuadnelson.com
  * GitHub Plugin URI: https://github.com/joshuadavidnelson/future-posts-calendar-widget
@@ -12,7 +12,7 @@
  *
  * @package 	Future_Posts_Calendar
  * @author 		Joshua David Nelson
- * @version 	1.0.0
+ * @version 	1.0.3
  * @license 	http://www.gnu.org/licenses/gpl-2.0.html GPLv2.0+
  */
 
@@ -60,7 +60,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 
  			// Plugin version
  			if ( ! defined( 'FPC_VERSION' ) ) {
- 				define( 'FPC_VERSION', '1.0.0' );
+ 				define( 'FPC_VERSION', '1.0.3' );
  			}
 
  			// Plugin Folder Path
@@ -202,7 +202,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
  */
 if( !function_exists( 'get_future_posts_calendar' ) ) {
 	function get_future_posts_calendar( $initial = true, $echo = true,  $future_archive_page_id = null, $category_id = null ) {
-		
+		echo '<style>.widget_calendar th, .widget_calendar td { width: 14.2% }</style>';
 		// if category is chosen
 		if( is_numeric( $category_id ) && $category_id >0 ) {
 			$category_id = intval( $category_id );
@@ -357,8 +357,12 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 		}
 
 		$calendar_output .= "\n\t\t".'<td class="pad">&nbsp;</td>';
-
-		if ( $future_archive_page_id ) {
+		
+		$next_month = strtotime( "{$next->year}-{$next->month}-01 00:00:00" );
+		fpc_log_me( $next_month );
+		if ( $next && $next_month < gmdate( 'U', current_time('timestamp') ) ) {
+			$calendar_output .= "\n\t\t".'<td colspan="3" id="next"><a href="' . get_month_link($next->year, $next->month) . '">' . $wp_locale->get_month_abbrev($wp_locale->get_month($next->month)) . ' &raquo;</a></td>';
+		} elseif ( $future_archive_page_id ) {
 			$calendar_output .= "\n\t\t".'<td colspan="3" id="next"><a href="' . get_permalink( $future_archive_page_id ) . '">Future &raquo;</a></td>';
 		} else {
 			$calendar_output .= "\n\t\t".'<td colspan="3" id="next" class="pad">&nbsp;</td>';
@@ -439,7 +443,8 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 				$calendar_output .= '<td>';
 
 			if ( in_array( $day, $daywithpost ) && isset( $ak_titles_for_day[ $day ] ) ) { // any posts today?
-				if( $day > gmdate('j', current_time('timestamp') ) ) {
+				$today = strtotime( "{$thisyear}-{$thismonth}-{$day} 00:00:00" );
+				if( $today > current_time('timestamp') ) {
 					$calendar_output .= '<a href="' . get_permalink( $future_archive_page_id ) . '#' . date( 'mdy', mktime(0, 0 , 0, $thismonth, $day, $thisyear) ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\" class=\"future\" style=\"color: #0fad70;\">$day</a>";
 				} else {
 					$calendar_output .= '<a href="' . get_day_link( $thisyear, $thismonth, $day ) . '" title="' . esc_attr( $ak_titles_for_day[ $day ] ) . "\">$day</a>";

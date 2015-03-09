@@ -27,7 +27,7 @@ class Future_Post_Calendar_Widget extends WP_Widget {
      * @return void
      **/
 	function Future_Post_Calendar_Widget() {
-		$widget_ops = array( 'classname' => 'widget_future_post_calendar', 'description' => __( 'A calendar of your site&#8217;s post and future posts.' ) );
+		$widget_ops = array( 'classname' => 'widget_future_post_calendar widget_calendar', 'description' => __( 'A calendar of your site&#8217;s post and future posts.' ) );
 		$this->WP_Widget( 'future-post-calendar', __( 'Future Post Calendar' ), $widget_ops );
 	}
 
