@@ -3,7 +3,7 @@
  * Plugin Name: Future Posts Calendar Widget
  * Plugin URI: http://joshuadnelson.com
  * Description: A calendar widget and archive short code for displaying future posts
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Joshua Nelson
  * Author URI: http://joshuadnelson.com
  * GitHub Plugin URI: https://github.com/joshuadavidnelson/future-posts-calendar-widget
@@ -12,7 +12,7 @@
  *
  * @package 	Future_Posts_Calendar
  * @author 		Joshua David Nelson
- * @version 	1.0.3
+ * @version 	1.0.4
  * @license 	http://www.gnu.org/licenses/gpl-2.0.html GPLv2.0+
  */
 
@@ -60,7 +60,7 @@ if( ! class_exists( 'Future_Posts_Calendar' ) ) {
 
  			// Plugin version
  			if ( ! defined( 'FPC_VERSION' ) ) {
- 				define( 'FPC_VERSION', '1.0.3' );
+ 				define( 'FPC_VERSION', '1.0.4' );
  			}
 
  			// Plugin Folder Path
@@ -359,7 +359,6 @@ if( !function_exists( 'get_future_posts_calendar' ) ) {
 		$calendar_output .= "\n\t\t".'<td class="pad">&nbsp;</td>';
 		
 		$next_month = strtotime( "{$next->year}-{$next->month}-01 00:00:00" );
-		fpc_log_me( $next_month );
 		if ( $next && $next_month < gmdate( 'U', current_time('timestamp') ) ) {
 			$calendar_output .= "\n\t\t".'<td colspan="3" id="next"><a href="' . get_month_link($next->year, $next->month) . '">' . $wp_locale->get_month_abbrev($wp_locale->get_month($next->month)) . ' &raquo;</a></td>';
 		} elseif ( $future_archive_page_id ) {
